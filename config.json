@@ -1,9 +1,9 @@
 {
     "exe": "data_sender.py", 
     "description": "An app to send raw sensor data to a client", 
-    "url": "https://github.com/ContinuumBridge/data_sender_app/archive/v1.1.0.tar.gz", 
+    "url": "https://github.com/ContinuumBridge/data_sender_app/archive/v1.2.0.tar.gz", 
     "app_resource": "/api/bridge/v1/app/31", 
-    "version": "1.1.0", 
+    "version": "1.2.0", 
     "provider": "ContinuumBridge", 
     "name": "Data Sender"
 }

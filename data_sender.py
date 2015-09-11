@@ -8,31 +8,35 @@
 config = {
     "data_send_delay": 1,
     "max_interval": 30*60,
-    "temperature": "True",
+    "temperature": True,
     "temp_min_change": 0.1,
-    "irtemperature": "False",
+    "temperature_polling_interval": 300,
+    "irtemperature": False,
     "irtemp_min_change": 0.5,
-    "humidity": "True",
+    "humidity": True,
     "humidity_min_change": 0.2,
-    "buttons": "False",
-    "accel": "False",
+    "humidity_polling_interval": 300,
+    "buttons": False,
+    "accel": False,
     "accel_min_change": 0.02,
     "accel_polling_interval": 3.0,
-    "gyro": "False",
+    "gyro": False,
     "gyro_min_change": 0.5,
     "gyro_polling_interval": 3.0,
-    "magnet": "False",
+    "magnet": False,
     "magnet_min_change": 1.5,
     "magnet_polling_interval": 3.0,
-    "binary": "True",
-    "luminance": "True",
+    "binary": True,
+    "luminance": True,
     "luminance_min_change": 1.0,
-    "power": "True",
+    "luminance_polling_interval": 300,
+    "power": True,
     "power_min_change": 1.0,
-    "battery": "True",
+    "power_polling_interval": 300,
+    "battery": True,
     "battery_min_change": 1.0,
-    "connected": "True",
-    "slow_polling_interval": 600.0
+    "battery_polling_interval": 300,
+    "connected": True
 }
 
 
@@ -420,7 +424,8 @@ class App(CbApp):
                 self.cbLog("warning", "onClientMessage: " + str(json.dumps(message["config"], indent=4)))
             else:
                 try:
-                    config = message["config"]
+                    newConfig = message["config"]
+                    config.update(newConfig)
                     with open(CONFIG_FILE, 'w') as f:
                         json.dump(config, f)
                     self.cbLog("info", "Config updated")
@@ -496,7 +501,7 @@ class App(CbApp):
                     break
 
     def onAdaptorService(self, message):
-        #self.cbLog("debug", "onAdaptorService, message: " + str(json.dumps(message, indent=4)))
+        self.cbLog("debug", "onAdaptorService, message: " + str(json.dumps(message, indent=4)))
         if self.state == "starting":
             self.setState("running")
         self.devServices.append(message)
@@ -504,81 +509,81 @@ class App(CbApp):
         for p in message["service"]:
             # Based on services offered & whether we want to enable them
             if p["characteristic"] == "temperature":
-                if config["temperature"] == 'True':
+                if config["temperature"]:
                     self.temp.append(TemperatureMeasure((self.idToName[message["id"]])))
                     self.temp[-1].dm = self.dm
                     self.temp[-1].cbLog = self.cbLog
                     serviceReq.append({"characteristic": "temperature",
-                                       "interval": config["slow_polling_interval"]})
+                                       "interval": config["temperature_polling_interval"]})
             elif p["characteristic"] == "ir_temperature":
-                if config["irtemperature"] == 'True':
+                if config["irtemperature"]:
                     self.irTemp.append(IrTemperatureMeasure(self.idToName[message["id"]]))
                     self.irTemp[-1].dm = self.dm
                     serviceReq.append({"characteristic": "ir_temperature",
-                                       "interval": config["slow_polling_interval"]})
+                                       "interval": config["temperature_polling_interval"]})
             elif p["characteristic"] == "acceleration":
-                if config["accel"] == 'True':
+                if config["accel"]:
                     self.accel.append(Accelerometer((self.idToName[message["id"]])))
                     serviceReq.append({"characteristic": "acceleration",
                                        "interval": config["accel_polling_interval"]})
                     self.accel[-1].dm = self.dm
             elif p["characteristic"] == "gyro":
-                if config["gyro"] == 'True':
+                if config["gyro"]:
                     self.gyro.append(Gyro(self.idToName[message["id"]]))
                     self.gyro[-1].dm = self.dm
                     serviceReq.append({"characteristic": "gyro",
                                        "interval": config["gyro_polling_interval"]})
             elif p["characteristic"] == "magnetometer":
-                if config["magnet"] == 'True': 
+                if config["magnet"]:
                     self.magnet.append(Magnet(self.idToName[message["id"]]))
                     self.magnet[-1].dm = self.dm
                     serviceReq.append({"characteristic": "magnetometer",
                                        "interval": config["magnet_polling_interval"]})
             elif p["characteristic"] == "buttons":
-                if config["buttons"] == 'True':
+                if config["buttons"]:
                     self.buttons.append(Buttons(self.idToName[message["id"]]))
                     self.buttons[-1].dm = self.dm
                     serviceReq.append({"characteristic": "buttons",
                                        "interval": 0})
             elif p["characteristic"] == "humidity":
-                if config["humidity"] == 'True':
+                if config["humidity"]:
                     self.humidity.append(Humid(self.idToName[message["id"]]))
                     self.humidity[-1].dm = self.dm
                     self.humidity[-1].cbLog = self.cbLog
                     serviceReq.append({"characteristic": "humidity",
-                                       "interval": config["slow_polling_interval"]})
+                                       "interval": config["humidity_polling_interval"]})
             elif p["characteristic"] == "binary_sensor":
-                if config["binary"] == 'True':
+                if config["binary"]:
                     self.binary.append(Binary(self.idToName[message["id"]]))
                     self.binary[-1].dm = self.dm
                     self.binary[-1].cbLog = self.cbLog
                     serviceReq.append({"characteristic": "binary_sensor",
                                        "interval": 0})
             elif p["characteristic"] == "power":
-                if config["power"] == 'True':
+                if config["power"]:
                     self.power.append(Power(self.idToName[message["id"]]))
                     self.power[-1].dm = self.dm
                     serviceReq.append({"characteristic": "power",
-                                       "interval": 0})
+                                       "interval": config["power_polling_interval"]})
             elif p["characteristic"] == "battery":
-                if config["battery"] == 'True':
+                if config["battery"]:
                     self.battery.append(Battery(self.idToName[message["id"]]))
                     self.battery[-1].dm = self.dm
                     serviceReq.append({"characteristic": "battery",
-                                       "interval": 0})
+                                       "interval": config["battery_polling_interval"]})
             elif p["characteristic"] == "connected":
-                if config["connected"] == 'True':
+                if config["connected"]:
                     self.connected.append(Connected(self.idToName[message["id"]]))
                     self.connected[-1].dm = self.dm
                     serviceReq.append({"characteristic": "connected",
                                        "interval": 0})
             elif p["characteristic"] == "luminance":
-                if config["luminance"] == 'True':
+                if config["luminance"]:
                     self.luminance.append(Luminance(self.idToName[message["id"]]))
                     self.luminance[-1].dm = self.dm
                     self.luminance[-1].cbLog = self.cbLog
                     serviceReq.append({"characteristic": "luminance",
-                                       "interval": 0})
+                                       "interval": config["luminance_polling_interval"]})
         msg = {"id": self.id,
                "request": "service",
                "service": serviceReq}
@@ -592,12 +597,7 @@ class App(CbApp):
                 self.cbLog("debug", "Read local config")
                 config.update(newConfig)
         except Exception as ex:
-            self.cbLog("warning", "LoCAL config does not exist or file is corrupt. Exception: " + str(type(ex)) + str(ex.args))
-        for c in config:
-            if c.lower in ("true", "t", "1"):
-                config[c] = True
-            elif c.lower in ("false", "f", "0"):
-                config[c] = False
+            self.cbLog("warning", "Local config does not exist or file is corrupt. Exception: " + str(type(ex)) + str(ex.args))
         self.cbLog("debug", "Config: " + str(json.dumps(config, indent=4)))
 
     def onConfigureMessage(self, managerConfig):
