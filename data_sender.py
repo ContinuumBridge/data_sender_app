@@ -48,26 +48,21 @@ from cbconfig import *
 import requests
 import json
 from twisted.internet import reactor
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 CONFIG_FILE                       = CB_CONFIG_DIR + "data_sender.config"
 CID                               = "CID164"  # Client ID
 
-def nicetime(timeStamp):
-    localtime = time.localtime(timeStamp)
-    milliseconds = '%03d' % int((timeStamp - int(timeStamp)) * 1000)
-    now = time.strftime('%H:%M:%S, %d-%m-%Y', localtime)
-    return now
-
 class DataManager:
     """ Managers data storage for all sensors """
-    def __init__(self, bridge_id, idToName):
-        self.idToName = idToName
-        self.baseAddress = bridge_id + "/"
+    def __init__(self):
+        self.idToName = None
+        self.baseAddress = None
         self.s = []
         self.waiting = False
+
+    def initAddress(self, bridge_id, idToName):
+        self.idToName = idToName
+        self.baseAddress = bridge_id + "/"
 
     def sendValues(self):
         msg = {"m": "data",
@@ -388,9 +383,8 @@ class App(CbApp):
         self.battery = []
         self.connected = []
         self.devices = []
-        self.devServices = [] 
         self.idToName = {} 
-        self.entryExitIDs = []
+        self.dm = DataManager()
         #CbApp.__init__ MUST be called
         CbApp.__init__(self, argv)
 
@@ -417,7 +411,7 @@ class App(CbApp):
         self.client.receive(message)
 
     def onClientMessage(self, message):
-        #self.cbLog("debug", "onClientMessage, message: " + str(json.dumps(message, indent=4)))
+        self.cbLog("debug", "onClientMessage, message: " + str(json.dumps(message, indent=4)))
         global config
         if "config" in message:
             if "warning" in message["config"]:
@@ -425,13 +419,25 @@ class App(CbApp):
             else:
                 try:
                     newConfig = message["config"]
-                    config.update(newConfig)
-                    with open(CONFIG_FILE, 'w') as f:
-                        json.dump(config, f)
-                    self.cbLog("info", "Config updated")
+                    copyConfig = config.copy()
+                    copyConfig.update(newConfig)
+                    if copyConfig != config:
+                        self.cbLog("debug", "onClientMessage. Updating config from client message")
+                        config = copyConfig.copy()
+                        with open(CONFIG_FILE, 'w') as f:
+                            json.dump(config, f)
+                        self.cbLog("info", "Config updated")
+                        self.readLocalConfig()
+                        # With a new config, send init message to all connected adaptors
+                        for i in self.adtInstances:
+                            init = {
+                                "id": self.id,
+                                "appClass": self.appClass,
+                                "request": "init"
+                            }
+                            self.sendMessage(init, i)
                 except Exception as ex:
                     self.cbLog("warning", "onClientMessage, could not write to file. Type: " + str(type(ex)) + ", exception: " +  str(ex.args))
-                self.readLocalConfig()
 
     def onAdaptorData(self, message):
         #self.cbLog("debug", "onadaptorData, message: " + str(json.dumps(message, indent=4)))
@@ -475,10 +481,6 @@ class App(CbApp):
                 if b.id == self.idToName[message["id"]]:
                     b.processBinary(message)
                     break
-            for n in self.entryExitIDs:
-                if n == message["id"]:
-                    self.entryExit.onChange(message["id"], message["timeStamp"], message["data"])
-                    break
         elif message["characteristic"] == "power":
             for b in self.power:
                 if b.id == self.idToName[message["id"]]:
@@ -504,7 +506,6 @@ class App(CbApp):
         self.cbLog("debug", "onAdaptorService, message: " + str(json.dumps(message, indent=4)))
         if self.state == "starting":
             self.setState("running")
-        self.devServices.append(message)
         serviceReq = []
         for p in message["service"]:
             # Based on services offered & whether we want to enable them
@@ -617,7 +618,7 @@ class App(CbApp):
         self.client.onClientMessage = self.onClientMessage
         self.client.sendMessage = self.sendMessage
         self.client.cbLog = self.cbLog
-        self.dm = DataManager(self.bridge_id, self.idToName)
+        self.dm.initAddress(self.bridge_id, self.idToName)
         self.dm.cbLog = self.cbLog
         self.dm.client = self.client
         self.setState("starting")
