@@ -28,7 +28,7 @@ config = {
     "magnet_polling_interval": 3.0,
     "binary": True,
     "luminance": True,
-    "luminance_min_change": 1.0,
+    "luminance_min_change": 10.0,
     "luminance_polling_interval": 300,
     "power": True,
     "power_min_change": 1.0,
@@ -206,10 +206,10 @@ class TemperatureMeasure():
         self.prevTime = time.time()
 
     def processTemp (self, resp):
-        self.cbLog("debug", "processTemp: " + self.id + " - " + str(resp))
+        #self.cbLog("debug", "processTemp: " + self.id + " - " + str(resp))
         timeStamp = resp["timeStamp"] 
         temp = resp["data"]
-        if abs(temp-self.prevTemp) >= config["temp_min_change"] or timeStamp - self.prevTime > config["max_interval"]:
+        if abs(temp-self.prevTemp) >= config["temp_min_change"] or timeStamp - self.prevTime > config["max_interval"]*1000:
             self.dm.storeTemp(self.id, timeStamp, temp) 
             self.prevTemp = temp
             self.prevTime = timeStamp
@@ -277,10 +277,10 @@ class Humid():
         self.prevTime = time.time()
 
     def processHumidity (self, resp):
-        self.cbLog("debug", "processHumidity: " + self.id + " - " + str(resp))
+        #self.cbLog("debug", "processHumidity: " + self.id + " - " + str(resp))
         h = resp["data"]
         timeStamp = resp["timeStamp"] 
-        if abs(self.previous - h) >= config["humidity_min_change"] or timeStamp - self.prevTime > config["max_interval"]:
+        if abs(self.previous - h) >= config["humidity_min_change"] or timeStamp - self.prevTime > config["max_interval"]*1000:
             self.dm.storeHumidity(self.id, timeStamp, h) 
             self.previous = h
             self.prevTime = timeStamp
@@ -311,10 +311,10 @@ class Luminance():
         self.prevTime = time.time()
 
     def processLuminance(self, resp):
-        self.cbLog("debug", "processLuminance: " + self.id + " - " + str(resp))
+        #self.cbLog("debug", "processLuminance: " + self.id + " - " + str(resp))
         v = resp["data"]
         timeStamp = resp["timeStamp"] 
-        if abs(v-self.previous) >= config["luminance_min_change"] or timeStamp - self.prevTime > config["max_interval"]:
+        if abs(v-self.previous) >= config["luminance_min_change"] or timeStamp - self.prevTime > config["max_interval"]*1000:
             self.dm.storeLuminance(self.id, timeStamp, v) 
             self.previous = v
             self.prevTime = timeStamp
@@ -328,7 +328,7 @@ class Power():
     def processPower(self, resp):
         v = resp["data"]
         timeStamp = resp["timeStamp"] 
-        if abs(v-self.previous) >= config["power_min_change"] or timeStamp - self.previousTime > config["max_interval"]:
+        if abs(v-self.previous) >= config["power_min_change"] or timeStamp - self.previousTime > config["max_interval"]*1000:
             self.dm.storePower(self.id, timeStamp, v) 
             self.previous = v
             self.previousTime = timeStamp
@@ -342,7 +342,7 @@ class Battery():
     def processBattery(self, resp):
         v = resp["data"]
         timeStamp = resp["timeStamp"] 
-        if abs(v-self.previous) >= config["battery_min_change"] or timeStamp - self.previousTime > config["max_interval"]:
+        if abs(v-self.previous) >= config["battery_min_change"] or timeStamp - self.previousTime > config["max_interval"]*1000:
             self.dm.storeBattery(self.id, timeStamp, v) 
             self.previous = v
             self.previousTime = timeStamp
@@ -360,7 +360,7 @@ class Connected():
             b = 1
         else:
             b = 0
-        if b != self.previous or timeStamp - self.previousTime > config["max_interval"]:
+        if b != self.previous or timeStamp - self.previousTime > config["max_interval"]*1000:
             self.dm.storeConnected(self.id, timeStamp, b) 
             self.previous = b
             self.previousTime = timeStamp
