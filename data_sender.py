@@ -7,7 +7,7 @@
 # Default values:
 config = {
     "data_send_delay": 1,
-    "max_interval": 30*60,
+    "max_interval": 60*60*12,
     "temperature": True,
     "temp_min_change": 0.1,
     "temperature_polling_interval": 300,
@@ -209,7 +209,7 @@ class TemperatureMeasure():
         #self.cbLog("debug", "processTemp: " + self.id + " - " + str(resp))
         timeStamp = resp["timeStamp"] 
         temp = resp["data"]
-        if abs(temp-self.prevTemp) >= config["temp_min_change"] or timeStamp - self.prevTime > config["max_interval"]*1000:
+        if abs(temp-self.prevTemp) >= config["temp_min_change"]:
             self.dm.storeTemp(self.id, timeStamp, temp) 
             self.prevTemp = temp
             self.prevTime = timeStamp
@@ -280,7 +280,7 @@ class Humid():
         #self.cbLog("debug", "processHumidity: " + self.id + " - " + str(resp))
         h = resp["data"]
         timeStamp = resp["timeStamp"] 
-        if abs(self.previous - h) >= config["humidity_min_change"] or timeStamp - self.prevTime > config["max_interval"]*1000:
+        if abs(self.previous - h) >= config["humidity_min_change"]:
             self.dm.storeHumidity(self.id, timeStamp, h) 
             self.previous = h
             self.prevTime = timeStamp
@@ -314,7 +314,7 @@ class Luminance():
         #self.cbLog("debug", "processLuminance: " + self.id + " - " + str(resp))
         v = resp["data"]
         timeStamp = resp["timeStamp"] 
-        if abs(v-self.previous) >= config["luminance_min_change"] or timeStamp - self.prevTime > config["max_interval"]*1000:
+        if abs(v-self.previous) >= config["luminance_min_change"]:
             self.dm.storeLuminance(self.id, timeStamp, v) 
             self.previous = v
             self.prevTime = timeStamp
@@ -328,7 +328,7 @@ class Power():
     def processPower(self, resp):
         v = resp["data"]
         timeStamp = resp["timeStamp"] 
-        if abs(v-self.previous) >= config["power_min_change"] or timeStamp - self.previousTime > config["max_interval"]*1000:
+        if abs(v-self.previous) >= config["power_min_change"]:
             self.dm.storePower(self.id, timeStamp, v) 
             self.previous = v
             self.previousTime = timeStamp
@@ -398,6 +398,9 @@ class App(CbApp):
                "state": self.state}
         self.sendManagerMessage(msg)
 
+    def onStop(self):
+        self.client.save()
+
     def onConcMessage(self, message):
         #self.cbLog("debug", "onConcMessage, message: " + str(json.dumps(message, indent=4)))
         if "status" in message:
@@ -421,7 +424,7 @@ class App(CbApp):
                     newConfig = message["config"]
                     copyConfig = config.copy()
                     copyConfig.update(newConfig)
-                    if copyConfig != config:
+                    if copyConfig != config or not os.path.isfile(CONFIG_FILE):
                         self.cbLog("debug", "onClientMessage. Updating config from client message")
                         config = copyConfig.copy()
                         with open(CONFIG_FILE, 'w') as f:
@@ -618,6 +621,7 @@ class App(CbApp):
         self.client.onClientMessage = self.onClientMessage
         self.client.sendMessage = self.sendMessage
         self.client.cbLog = self.cbLog
+        self.client.loadSaved()
         self.dm.initAddress(self.bridge_id, self.idToName)
         self.dm.cbLog = self.cbLog
         self.dm.client = self.client
