@@ -342,7 +342,7 @@ class Battery():
     def processBattery(self, resp):
         v = resp["data"]
         timeStamp = resp["timeStamp"] 
-        if abs(v-self.previous) >= config["battery_min_change"] or timeStamp - self.previousTime > config["max_interval"]*1000:
+        if abs(v-self.previous) >= config["battery_min_change"] or timeStamp - self.previousTime > config["max_interval"]:
             self.dm.storeBattery(self.id, timeStamp, v) 
             self.previous = v
             self.previousTime = timeStamp
@@ -360,7 +360,7 @@ class Connected():
             b = 1
         else:
             b = 0
-        if b != self.previous or timeStamp - self.previousTime > config["max_interval"]*1000:
+        if b != self.previous or timeStamp - self.previousTime > config["max_interval"]:
             self.dm.storeConnected(self.id, timeStamp, b) 
             self.previous = b
             self.previousTime = timeStamp
@@ -490,11 +490,13 @@ class App(CbApp):
                     b.processPower(message)
                     break
         elif message["characteristic"] == "battery":
+            self.cbLog("debug", "Battery, message: " + str(message))
             for b in self.battery:
                 if b.id == self.idToName[message["id"]]:
                     b.processBattery(message)
                     break
         elif message["characteristic"] == "connected":
+            self.cbLog("debug", "Connected, message: " + str(message))
             for b in self.connected:
                 if b.id == self.idToName[message["id"]]:
                     b.processConnected(message)
@@ -617,7 +619,7 @@ class App(CbApp):
                 idToName2[adtID] = friendly_name
                 self.idToName[adtID] = friendly_name.replace(" ", "_")
                 self.devices.append(adtID)
-        self.client = CbClient(self.id, CID, 5)
+        self.client = CbClient(self.id, CID, 100)
         self.client.onClientMessage = self.onClientMessage
         self.client.sendMessage = self.sendMessage
         self.client.cbLog = self.cbLog
