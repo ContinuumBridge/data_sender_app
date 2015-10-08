@@ -48,6 +48,13 @@ from cbconfig import *
 import requests
 import json
 from twisted.internet import reactor
+#from cbutils import timeCorrect
+# Can be removed after all bridges are at a version that supports timeCorrect()
+def timeCorrect():
+    if time.time() < 32000000:
+        return False
+    else:
+        return True
 
 CONFIG_FILE                       = CB_CONFIG_DIR + "data_sender.config"
 CID                               = "CID164"  # Client ID
@@ -444,6 +451,9 @@ class App(CbApp):
 
     def onAdaptorData(self, message):
         #self.cbLog("debug", "onadaptorData, message: " + str(json.dumps(message, indent=4)))
+        if not timeCorrect():
+            self.cbLog("info", "Data not processed as time is not correct")
+            return 
         if message["characteristic"] == "acceleration":
             for a in self.accel:
                 if a.id == self.idToName[message["id"]]: 
