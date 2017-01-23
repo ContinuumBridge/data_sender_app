@@ -602,7 +602,9 @@ class App(CbApp):
                                        "interval": config["luminance_polling_interval"]})
         msg = {"id": self.id,
                "request": "service",
-               "service": serviceReq}
+               "service": serviceReq
+              }
+        self.cbLog("debug", "onAdaptorService, responding: " + str(json.dumps(msg, indent=4)))
         self.sendMessage(msg, message["id"])
 
     def readLocalConfig(self):
